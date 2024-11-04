@@ -1,4 +1,5 @@
-"""These functions compute various non-modality dependent signal processing metrics."""
+"""These functions compute various non-modality dependent signal processing metrics.
+"""
 
 import warnings
 
@@ -53,7 +54,7 @@ def mean(signal: np.array):
 
     Parameters
     ----------
-    signal : np.array or peakdet Physio object
+    signal : np.array
         Physiological data
 
     Returns
@@ -107,7 +108,7 @@ def min(signal: np.array):
 
     Parameters
     ----------
-    signal : np.array or peakdet Physio object
+    signal : np.array
         Physiological data
 
     Returns
@@ -125,7 +126,7 @@ def max(signal: np.array):
 
     Parameters
     ----------
-    signal : np.array or peakdet Physio object
+    signal : np.array
         Physiological data
 
     Returns
@@ -143,7 +144,7 @@ def max_amplitude(signal: np.array):
 
     Parameters
     ----------
-    signal : np.array or peakdet Physio object
+    signal : np.array
         Physiological data
 
     Returns
@@ -213,8 +214,8 @@ def peak_detection(
     peak_dist : float, optional
         Distance for peak detection, by default 60.0
 
-    Returns
-    -------
+    Return
+    ------
     Physio
         Updated Physio class with peaks etc.
     """
@@ -232,9 +233,13 @@ def peak_distance(
     ----------
     ph : Physio
         A Physio object, that contains peak information.
+    peak_threshold : float, optional
+        Description
+    peak_dist : float, optional
+        Description
 
-    Returns
-    -------
+    Return
+    ------
     np.array
         np.array of shape [npeaks, ]
     """
@@ -256,9 +261,13 @@ def peak_amplitude(
     ----------
     ph : Physio
         Physio object with peak and trough information.
+    peak_threshold : float, optional
+        Description
+    peak_dist : float, optional
+        Description
 
-    Returns
-    -------
+    Return
+    ------
     np.array
         np.array of shape [npeaks - 1, ]
     """
@@ -271,48 +280,62 @@ def peak_amplitude(
     return peak_amp - trough_amp
 
 
-def power_spectrum(data):
+def power_spectrum(data, method="periodogram"):
     """
     Compute the power spectrum of the signal.
 
     Parameters
     ----------
-    args : data
+    data : peakdet.Physio
         a peakdet Physio object
+    method : 'periodogram' or 'Welch', optional
+        the method used to estimate the energy. Default to 'periodogram'
 
     Returns
     -------
-    tuple :obj: tuple
+    tuple : obj: tuple
         A tuple containing as the first element the frequencies and the second element
         the power spectrum
     """
-    freqs, psd = signal.welch(data.data, data.fs)
+    if method == "periodogram":
+        freqs, psd = signal.periodogram(data.data, data.fs)
+    elif method == "welch":
+        freqs, psd = signal.welch(data.data, data.fs)
+    else:
+        raise ValueError(f"Method '{method}' for PSD estimation not supported")
 
     return freqs, psd
 
 
-def energy(data, lowf=None, highf=None):
+def energy(data, lowf=None, highf=None, method="periodogram"):
     """
     Calculate the energy in a certain frequency band.
 
     Parameters
     ----------
-    args : data
+    data : peakdet.Physio
         a peakdet Physio object
-    args : lowf
+    lowf : float or None, optional
         float that corresponds to the lower frequency band limit
-    args : highf
+    highf : float or None, optional
         float that corresponds to the higher frequency band limit
+    method : 'periodogram' or 'Welch', optional
+        the method used to estimate the energy. Default to 'periodogram'
 
     Returns
     -------
-    Float :obj:`numpy.ndarray`
+    Float : obj:`numpy.ndarray`
         Energy in the defined frequency band
     """
-    freqs, psd = power_spectrum(data)
+    freqs, psd = power_spectrum(data, method=method)
 
     # Energy is defined as the square of the power spectral density
     energy_density = np.square(psd)
+
+    if bool(lowf) is not bool(highf):
+        raise Warning(
+            "Both lowf and highf need to be defined to compute band energy. Computing total energy instead."
+        )
 
     if lowf is None or highf is None:
         # If frequencies are not defined, compute the total power
@@ -324,7 +347,7 @@ def energy(data, lowf=None, highf=None):
     return np.sum(energy_density[idx_band])
 
 
-def fALFF(data, lowf=0, highf=0.5):
+def fALFF(data, lowf=0, highf=0.5, method="periodogram"):
     """
     Calculate the fractional amplitude of low-frequency fluctuations (fALFF).
 
@@ -333,27 +356,29 @@ def fALFF(data, lowf=0, highf=0.5):
 
     Parameters
     ----------
-    args : data
+    data : peakdet.Physio
         a peakdet Physio object
-    args : lowf
+    lowf : float or None, optional
         float that corresponds to the lower frequency band limit
-    args : highf
+    highf : float or None, optional
         float that corresponds to the higher frequency band limit
+    method : 'periodogram' or 'Welch', optional
+        the method used to estimate the energy. Default to 'periodogram'
 
     Returns
     -------
-    Float :obj:`numpy.ndarray`
+    Float : obj:`numpy.ndarray`
         fALFF
 
     Note
-    -------
+    ----
     The default value of lowf and highf were set randomly. Please update them with more meaningful value
     """
     # Extract energy in the frequency band
-    band_energy = energy(data, lowf=lowf, highf=highf)
+    band_energy = energy(data, lowf=lowf, highf=highf, method=method)
 
     # Extract total energy
-    total_energy = energy(data)
+    total_energy = energy(data, method=method)
 
     # Compute the relative energy
     return band_energy / total_energy
@@ -365,14 +390,14 @@ def freq_energy(data, thr=0.5):
 
     Parameters
     ----------
-    args : data
-        a peakdet Physio object
-    args : thr
+    data : peakdet.Physio
+        Description
+    thr : float, optional
         Power threshold
 
     Returns
     -------
-    Float :obj:`numpy.ndarray`
+    Float : obj:`numpy.ndarray`
         Minimum frequency with power higher than the threshold
 
     Note
