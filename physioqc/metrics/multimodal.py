@@ -80,7 +80,7 @@ def tSNR(signal):
     N-sized array :obj:`numpy.ndarray`
         Temporal signal to noise ratio of signal.
     """
-    return np.mean(signal, axis=0) / np.std(signal, axis=0)
+    return np.abs(np.mean(signal, axis=0) / np.std(signal, axis=0))
 
 
 @physio_or_numpy
@@ -98,7 +98,7 @@ def CoV(signal):
     N-sized array :obj:`numpy.ndarray`
         Temporal signal to noise ratio of signal.
     """
-    return np.std(signal, axis=0) / np.mean(signal, axis=0)
+    return np.abs(np.std(signal, axis=0) / np.mean(signal, axis=0))
 
 
 @physio_or_numpy
